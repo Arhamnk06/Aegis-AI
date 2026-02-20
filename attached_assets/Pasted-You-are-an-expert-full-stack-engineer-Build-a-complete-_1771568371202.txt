@@ -1,0 +1,130 @@
+You are an expert full stack engineer. Build a complete, runnable Streamlit app in Python called:
+
+Aegis AI – Enterprise Risk & Harm Prevention Platform
+
+Goal:
+A polished hackathon demo that looks enterprise grade, demonstrates responsible AI governance, includes SDG alignment, and shows enterprise thinking: scalability, reliability, and security. The app must run locally with:
+streamlit run app.py
+
+Hard Requirements:
+1) Create these files and folders exactly:
+- app.py
+- requirements.txt
+- src/
+  - __init__.py
+  - logic.py
+  - data.py
+  - ui.py
+- assets/
+  - sample_signals.csv
+
+2) The app must have sidebar navigation with 5 pages:
+- Overview
+- Risk Analysis
+- Responsible AI & Governance
+- Enterprise Architecture
+- Demo Mode
+
+3) Overview page must include:
+- Title and subtitle
+- 4 KPI metrics using st.metric:
+  - Active Risk Signals
+  - High Severity Alerts
+  - Avg Confidence
+  - System Status (Operational)
+- A risk trend chart using st.line_chart from simulated data
+- A short “Why this matters” section in professional tone
+
+4) Risk Analysis page must include:
+- Option A: Upload CSV
+- Option B: Use built in simulated dataset button
+- Display the dataframe preview
+- Validate required columns and show a clear error if missing:
+  required columns: timestamp, category, severity_score, description
+- For each record compute:
+  - risk_level in {Low, Medium, High, Critical}
+  - anomaly_flag boolean
+  - confidence_score between 0.55 and 0.95
+- Show a table with these outputs
+- Let user click a selected row index and generate a “Decision Card” containing:
+  - Risk level
+  - AI explanation
+  - Recommended intervention
+  - Confidence score
+  - Model transparency panel that lists which inputs were used
+
+5) Responsible AI & Governance page must include these sections with bullets:
+- Privacy by design (no default storage of personal data, redaction guidance)
+- Human in the loop policy (AI suggests, humans decide)
+- Bias and fairness considerations (avoid targeting protected groups, monitor drift)
+- Audit logging plan (what would be logged and why)
+- Failure modes and mitigations (false positives, hallucinations, over reliance)
+
+6) Enterprise Architecture page must include:
+- A clear architecture diagram rendered using st.markdown in ASCII or Mermaid-like text
+- Describe:
+  - Stateless API layer
+  - Scalable inference service
+  - Encrypted storage
+  - Role based access control
+  - Monitoring and alerting
+  - Rate limiting
+- Add “Why IBM Z” section explaining suitability for mission critical workloads and secure high volume processing in finance and healthcare
+- Add a small “Business Model” section with a tiered SaaS plan
+
+7) Demo Mode page must be a clean scripted demo:
+- Buttons:
+  - Load University Exam Stress Scenario
+  - Load Healthcare Capacity Scenario
+  - Load Financial Fraud Scenario
+- Each scenario loads a dataset and automatically highlights:
+  - top 3 critical risks
+  - anomalies
+- Display a short pitch script text box that I can read during the live demo
+- Include SDG alignment text for each scenario
+
+8) Data and logic:
+- In src/data.py:
+  - function load_sample_csv() reads assets/sample_signals.csv
+  - function generate_simulated_signals(n:int, scenario:str) returns a pandas DataFrame with required columns
+- In src/logic.py:
+  - function calculate_risk_level(score:float) returns Low Medium High Critical based on thresholds:
+    Low < 0.35
+    Medium < 0.6
+    High < 0.8
+    Critical >= 0.8
+  - function detect_anomaly(score:float, category:str) uses category specific thresholds and also flags score >= 0.9 as anomaly
+  - function compute_confidence(score:float, anomaly:bool) returns confidence 0.55 to 0.95
+  - function redact_sensitive(text:str) removes emails and phone like patterns
+  - function generate_ai_explanation(category, severity_score, anomaly, description) returns a professional explanation and includes a caution line: “Recommendation is advisory and requires human review.”
+  - function recommend_intervention(category, risk_level, anomaly) returns concrete enterprise interventions
+- In src/ui.py:
+  - functions that render each page so app.py remains clean
+
+9) assets/sample_signals.csv:
+Create a realistic CSV with at least 25 rows, mix of categories:
+- mental_health
+- service_load
+- fraud
+- misinformation
+Include timestamps, severity_score values 0 to 1, and descriptions that look realistic but do NOT contain real personal data.
+
+10) Quality constraints:
+- Must not crash if user uploads bad file: show friendly errors
+- Must not require any external API keys
+- Must be deterministic and stable
+- Use only standard libraries plus: streamlit, pandas, numpy
+- requirements.txt must list exact packages needed
+- All code must be well commented and readable
+
+11) Visual polish:
+- Use st.container, st.columns, st.divider, st.info, st.warning, st.success
+- Use consistent wording: “signals”, “risk”, “intervention”, “confidence”
+- Add a small footer: “Aegis AI demo. Not for clinical or legal decisions.”
+
+Deliverables:
+Return the full contents of all files: app.py, requirements.txt, src/logic.py, src/data.py, src/ui.py, src/__init__.py, assets/sample_signals.csv
+
+After generating code, include brief run instructions:
+1) pip install -r requirements.txt
+2) streamlit run app.py
