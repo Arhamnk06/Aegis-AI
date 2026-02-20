@@ -152,7 +152,7 @@ def _render_decision_card(row):
             st.markdown(f"**Severity Score:** {severity:.2f}")
         with col2:
             st.markdown(f"**Anomaly Detected:** {'Yes' if anomaly else 'No'}")
-            st.markdown(f"**Estimated Enterprise Impact:** {impact}")
+            st.markdown(f"**Enterprise Impact Level:** {impact}")
 
         st.markdown(explanation)
 
@@ -396,13 +396,29 @@ def render_demo_mode():
         high_count = len(enriched[enriched["risk_level"] == "High"])
         anomaly_count = len(enriched[enriched["anomaly_flag"]])
 
-        st.info(
-            f"**Executive Summary:** This scenario contains {len(enriched)} risk signals with "
-            f"{critical_count} critical and {high_count} high-severity alerts. "
-            f"{anomaly_count} anomalies were detected requiring immediate attention. "
-            f"Recommended response: prioritize critical alerts, assign owner teams, and initiate escalation protocols."
-        )
+        top_cat_names = [cat.replace("_", " ").title() for cat in top_categories.index]
+        domains_str = " and ".join(top_cat_names[:2]) if len(top_cat_names) >= 2 else top_cat_names[0]
+
+        if critical_count > 0:
+            summary_text = (
+                f"**Executive Summary:** Escalation thresholds were breached across {domains_str} domains. "
+                f"{critical_count} critical and {high_count} high-severity signals require leadership attention. "
+                f"{anomaly_count} anomalous patterns identified. "
+                f"Coordinated intervention within 60 minutes is recommended."
+            )
+        else:
+            summary_text = (
+                f"**Executive Summary:** Elevated risk activity detected across {domains_str} domains. "
+                f"{high_count} high-severity signals and {anomaly_count} anomalies warrant close monitoring. "
+                f"Recommend proactive resource allocation and stakeholder notification."
+            )
+        st.info(summary_text)
         st.markdown(f"**Primary Categories:** {top_cat_str}")
+
+        risk_counts = enriched["risk_level"].value_counts().reindex(["Critical", "High", "Medium", "Low"], fill_value=0)
+        chart_df = pd.DataFrame({"Risk Level": risk_counts.index, "Count": risk_counts.values})
+        chart_df = chart_df.set_index("Risk Level")
+        st.bar_chart(chart_df)
 
         st.divider()
         st.subheader("Top Critical Alerts (Immediate Action Required)")
@@ -420,11 +436,12 @@ def render_demo_mode():
                     f"Risk: {risk_level} | "
                     f"Confidence: {row['confidence_score']:.2f}\n\n"
                     f"Anomaly Detected: {'Yes' if row['anomaly_flag'] else 'No'} | "
-                    f"Estimated Impact: {impact} | "
+                    f"Enterprise Impact Level: {impact} | "
                     f"Recommended Owner: {owner} | "
                     f"SLA: {sla}\n\n"
                     f"{row['description']}"
                 )
+                st.caption("Final action requires human authorization.")
 
         st.divider()
         st.subheader("Recommended Actions Queue")
