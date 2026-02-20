@@ -2,10 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from src.data import load_sample_csv, generate_simulated_signals, validate_dataframe
+from datetime import datetime
 from src.logic import (
     enrich_dataframe,
     generate_ai_explanation,
     recommend_intervention,
+    estimate_enterprise_impact,
+    get_owner_team,
+    get_sla,
 )
 
 
@@ -83,7 +87,17 @@ def render_risk_analysis():
         st.dataframe(df.head(10), use_container_width=True)
 
         enriched = enrich_dataframe(df)
+        enriched = enriched.sort_values("severity_score", ascending=False).reset_index(drop=True)
         st.divider()
+
+        critical_alerts = enriched[enriched["risk_level"] == "Critical"]
+        if len(critical_alerts) > 0:
+            st.subheader(f"Critical Alerts ({len(critical_alerts)})")
+            crit_cols = ["timestamp", "category", "severity_score", "confidence_score", "description"]
+            crit_available = [c for c in crit_cols if c in critical_alerts.columns]
+            st.dataframe(critical_alerts[crit_available], use_container_width=True)
+            st.divider()
+
         st.subheader("Enriched Risk Analysis")
         display_cols = ["timestamp", "category", "severity_score", "risk_level", "anomaly_flag", "confidence_score", "description"]
         available_cols = [c for c in display_cols if c in enriched.columns]
@@ -113,6 +127,7 @@ def _render_decision_card(row):
     anomaly = row["anomaly_flag"]
     description = row["description"]
     confidence = row["confidence_score"]
+    impact = estimate_enterprise_impact(risk_level)
 
     explanation = generate_ai_explanation(category, severity, anomaly, description)
     intervention = recommend_intervention(category, risk_level, anomaly)
@@ -131,21 +146,29 @@ def _render_decision_card(row):
 
         getattr(st, alert_type)(f"**Risk Level: {risk_level}**")
 
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"**Category:** {category.replace('_', ' ').title()}")
+            st.markdown(f"**Severity Score:** {severity:.2f}")
+        with col2:
+            st.markdown(f"**Anomaly Detected:** {'Yes' if anomaly else 'No'}")
+            st.markdown(f"**Estimated Enterprise Impact:** {impact}")
+
         st.markdown(explanation)
 
         st.success(f"**Recommended Intervention:** {intervention}")
 
         st.metric("Confidence Score", f"{confidence:.2f}")
 
-        with st.expander("Model Transparency Panel"):
+        st.caption(f"Audit Log: Event recorded at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        with st.expander("Model Transparency"):
             st.markdown(
-                f"- **Category:** {category}\n"
-                f"- **Severity Score:** {severity}\n"
-                f"- **Anomaly Detected:** {anomaly}\n"
-                f"- **Description (redacted):** {description}\n"
-                f"- **Risk Classification Thresholds:** Low < 0.35, Medium < 0.6, High < 0.8, Critical >= 0.8\n"
-                f"- **Anomaly Detection:** Category-specific threshold + global >= 0.9 flag\n"
-                f"- **Confidence Computation:** Base (0.55) + severity scaling (0.35) + anomaly bonus (0.05)"
+                "- **Inputs evaluated:** category, severity_score, description\n"
+                "- **Risk tiering:** Deterministic thresholds (Low < 0.35, Medium < 0.6, High < 0.8, Critical >= 0.8)\n"
+                "- **Anomaly detection:** Category-specific thresholds and score >= 0.9\n"
+                "- **Confidence:** Heuristic calibration based on severity and anomaly\n"
+                "- **Human-in-the-loop:** Required for final decision"
             )
 
 
@@ -357,28 +380,71 @@ def render_demo_mode():
 
         df = generate_simulated_signals(30, scenario_key)
         enriched = enrich_dataframe(df)
+        enriched = enriched.sort_values("severity_score", ascending=False).reset_index(drop=True)
+
+        scenario_name = config["label"].replace("Load ", "").replace(" Scenario", "")
+
+        top_alerts = enriched.nlargest(3, "severity_score")
+        top_categories = enriched["category"].value_counts().head(2)
 
         st.divider()
-        st.subheader(f"Scenario: {config['label'].replace('Load ', '').replace(' Scenario', '')}")
+        st.subheader("Scenario Summary")
+        st.markdown(f"**Scenario Loaded:** {scenario_name}")
 
-        st.markdown("#### Top 3 Critical Risks")
-        critical = enriched[enriched["risk_level"] == "Critical"].head(3)
-        if len(critical) == 0:
-            high = enriched[enriched["risk_level"].isin(["Critical", "High"])].nlargest(3, "severity_score")
-            critical = high
+        top_cat_str = ", ".join([f"{cat.replace('_', ' ').title()} ({cnt})" for cat, cnt in top_categories.items()])
+        critical_count = len(enriched[enriched["risk_level"] == "Critical"])
+        high_count = len(enriched[enriched["risk_level"] == "High"])
+        anomaly_count = len(enriched[enriched["anomaly_flag"]])
 
-        for _, row in critical.iterrows():
+        st.info(
+            f"**Executive Summary:** This scenario contains {len(enriched)} risk signals with "
+            f"{critical_count} critical and {high_count} high-severity alerts. "
+            f"{anomaly_count} anomalies were detected requiring immediate attention. "
+            f"Recommended response: prioritize critical alerts, assign owner teams, and initiate escalation protocols."
+        )
+        st.markdown(f"**Primary Categories:** {top_cat_str}")
+
+        st.divider()
+        st.subheader("Top Critical Alerts (Immediate Action Required)")
+
+        for _, row in top_alerts.iterrows():
+            risk_level = row["risk_level"]
+            impact = estimate_enterprise_impact(risk_level)
+            owner = get_owner_team(row["category"])
+            sla = get_sla(risk_level)
+
             with st.container():
                 st.error(
                     f"**{row['category'].replace('_', ' ').title()}** — "
                     f"Severity: {row['severity_score']:.2f} | "
-                    f"Risk: {row['risk_level']} | "
+                    f"Risk: {risk_level} | "
                     f"Confidence: {row['confidence_score']:.2f}\n\n"
+                    f"Anomaly Detected: {'Yes' if row['anomaly_flag'] else 'No'} | "
+                    f"Estimated Impact: {impact} | "
+                    f"Recommended Owner: {owner} | "
+                    f"SLA: {sla}\n\n"
                     f"{row['description']}"
                 )
 
+        st.divider()
+        st.subheader("Recommended Actions Queue")
+        actions_data = []
+        for _, row in top_alerts.iterrows():
+            risk_level = row["risk_level"]
+            owner = get_owner_team(row["category"])
+            sla = get_sla(risk_level)
+            intervention = recommend_intervention(row["category"], risk_level, row["anomaly_flag"])
+            actions_data.append({
+                "Action": intervention[:120] + "..." if len(intervention) > 120 else intervention,
+                "Owner": owner,
+                "SLA": sla,
+                "Status": "Pending",
+            })
+        st.table(pd.DataFrame(actions_data))
+
+        st.divider()
         anomalies = enriched[enriched["anomaly_flag"]]
-        st.markdown(f"#### Anomalies Detected: {len(anomalies)}")
+        st.subheader(f"Anomalies Detected: {len(anomalies)}")
         if len(anomalies) > 0:
             st.dataframe(
                 anomalies[["timestamp", "category", "severity_score", "risk_level", "confidence_score", "description"]],
@@ -388,15 +454,15 @@ def render_demo_mode():
             st.success("No anomalies detected in this scenario.")
 
         st.divider()
-        st.markdown("#### SDG Alignment")
+        st.subheader("SDG Alignment")
         st.info(config["sdg"])
 
         st.divider()
-        st.markdown("#### Pitch Script")
+        st.subheader("Live Demo Script")
         st.text_area(
             "Read this during the live demo:",
             value=config["pitch"],
-            height=180,
+            height=200,
             key=f"pitch_{scenario_key}",
         )
 

@@ -1,0 +1,105 @@
+Update my Streamlit app to look more enterprise and gold tier.
+
+IMPORTANT
+Do NOT rewrite the whole project.
+Only make targeted edits in src/logic.py and src/ui.py.
+Keep existing styling and navigation.
+After edits, app must still run with: streamlit run app.py with no crashes.
+
+PART A: Risk Analysis page upgrades (Decision Card)
+
+1) Executive level explanation wording
+In src/logic.py update generate_ai_explanation(category, severity_score, anomaly, description) so that:
+- Wording depends on risk level computed from severity_score:
+  - Medium: “Elevated risk requiring monitoring.”
+  - High: “Escalation threshold exceeded. Material operational risk.”
+  - Critical: “Immediate action required. Potential systemic impact.”
+- Always ends with: “Recommendation is advisory and requires human review.”
+- If anomaly is true, add: “Anomaly detected: behavior deviates significantly from baseline.”
+- Keep text professional and concise.
+
+2) Show anomaly and key fields explicitly in Decision Card
+In src/ui.py where Decision Card is rendered, add lines for:
+- Category: <category>
+- Severity Score: <severity_score rounded to 2 decimals>
+- Anomaly Detected: Yes or No
+- Estimated Enterprise Impact: <impact level from mapping below>
+
+3) Add Model Transparency panel
+In the Decision Card, add an st.expander titled “Model Transparency” with bullets:
+- Inputs evaluated: category, severity_score, description
+- Risk tiering: deterministic thresholds (Low <0.35, Medium <0.6, High <0.8, Critical >=0.8)
+- Anomaly detection: category specific thresholds and score >=0.9
+- Confidence: heuristic calibration based on severity and anomaly
+- Human in the loop: required for final decision
+
+4) Make risk level visually strong
+When displaying risk level, use Streamlit status components:
+- Low -> st.success
+- Medium -> st.info
+- High -> st.warning
+- Critical -> st.error
+
+5) Sort enriched results by severity_score descending
+In src/ui.py after enrichment, sort by severity_score descending before displaying.
+
+6) Highlight critical rows
+If dataframe styling is possible, highlight rows where risk_level == “Critical”.
+If styling is limited, add a separate table “Critical Alerts” filtered to Critical and show it above the main table.
+
+7) Add Enterprise Impact Estimate logic
+In src/logic.py add a function or mapping:
+- Low -> Minor
+- Medium -> Moderate
+- High -> Significant
+- Critical -> Severe
+Show it in the Decision Card.
+
+8) Add Audit Log simulation in Decision Card
+In Decision Card show:
+“Audit Log: Event recorded at <current timestamp>”
+Do not store anything, just display.
+
+PART B: Demo Mode upgrades (guided incident response)
+
+Only update the Demo Mode page in src/ui.py.
+
+1) Add a Scenario Summary section at the top with:
+- Scenario Loaded: <scenario name>
+- Executive Summary: 2 to 3 sentences summarizing top risks and recommended response
+- Primary Categories: top 2 categories with counts
+
+2) Improve top alert cards in Demo Mode
+For the top 3 critical alerts, show in each card:
+- Category
+- Severity
+- Risk
+- Confidence
+- Anomaly Detected: Yes or No
+- Estimated Impact: Minor/Moderate/Significant/Severe
+- Recommended Owner Team: Comms / IT Ops / Student Services / Security
+- SLA: Critical = 1 hour, High = 24 hours
+
+3) Add Recommended Actions Queue table in Demo Mode
+Add a table titled “Recommended Actions Queue” with columns:
+action, owner, sla, status
+Populate it automatically based on the top 3 critical alerts.
+Status default: Pending.
+
+4) Structure Demo Mode sections in this order:
+- Scenario Summary
+- Top Critical Alerts (Immediate Action Required)
+- Recommended Actions Queue
+- Anomalies Detected table (existing)
+- SDG Alignment (existing)
+- Live Demo Script (existing or add if missing)
+
+5) Add a visible Live Demo Script text area
+Label: “Live Demo Script”
+Pre fill with a 30 to 45 second script tailored to the selected scenario, mentioning:
+- proactive detection
+- enterprise governance
+- human in the loop
+- SDG alignment
+
+After making these changes, verify no errors and that both Risk Analysis and Demo Mode still work.

@@ -45,6 +45,43 @@ def redact_sensitive(text: str) -> str:
     return text
 
 
+ENTERPRISE_IMPACT = {
+    "Low": "Minor",
+    "Medium": "Moderate",
+    "High": "Significant",
+    "Critical": "Severe",
+}
+
+
+def estimate_enterprise_impact(risk_level: str) -> str:
+    """Map risk level to enterprise impact estimate."""
+    return ENTERPRISE_IMPACT.get(risk_level, "Unknown")
+
+
+OWNER_TEAM = {
+    "mental_health": "Student Services",
+    "service_load": "IT Ops",
+    "fraud": "Security",
+    "misinformation": "Comms",
+}
+
+
+def get_owner_team(category: str) -> str:
+    """Map category to recommended owner team."""
+    return OWNER_TEAM.get(category, "Operations")
+
+
+def get_sla(risk_level: str) -> str:
+    """Return SLA based on risk level."""
+    if risk_level == "Critical":
+        return "1 hour"
+    elif risk_level == "High":
+        return "24 hours"
+    elif risk_level == "Medium":
+        return "72 hours"
+    return "1 week"
+
+
 def generate_ai_explanation(category: str, severity_score: float, anomaly: bool, description: str) -> str:
     """Generate a professional AI explanation for a risk signal."""
     risk_level = calculate_risk_level(severity_score)
@@ -56,13 +93,21 @@ def generate_ai_explanation(category: str, severity_score: float, anomaly: bool,
         "misinformation": "information accuracy and content authenticity",
     }
 
+    risk_statements = {
+        "Low": "Within normal operating parameters. Routine monitoring applies.",
+        "Medium": "Elevated risk requiring monitoring.",
+        "High": "Escalation threshold exceeded. Material operational risk.",
+        "Critical": "Immediate action required. Potential systemic impact.",
+    }
+
     context = category_context.get(category, "operational risk monitoring")
-    anomaly_text = " This signal exhibits anomalous characteristics that deviate significantly from baseline patterns." if anomaly else ""
+    statement = risk_statements.get(risk_level, "Assessment pending.")
+    anomaly_text = " Anomaly detected: behavior deviates significantly from baseline." if anomaly else ""
 
     explanation = (
-        f"**Analysis:** This {risk_level.lower()}-severity signal relates to {context}. "
-        f"The severity score of {severity_score:.2f} indicates "
-        f"{'an urgent need for immediate attention' if risk_level == 'Critical' else 'elevated monitoring requirements' if risk_level == 'High' else 'standard monitoring protocols apply'}. "
+        f"**Analysis:** This signal relates to {context}. "
+        f"{statement} "
+        f"Severity score: {severity_score:.2f}. "
         f"Signal context: \"{redact_sensitive(description)}\".{anomaly_text}\n\n"
         f"*Recommendation is advisory and requires human review.*"
     )
