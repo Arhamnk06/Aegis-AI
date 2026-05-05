@@ -1,9 +1,6 @@
 # 🛡️ Aegis AI  
 ## Enterprise Risk & Harm Prevention Platform  
 
-🌐 **Live Demo:**  
-https://asset-manager-ArhamNauman.replit.app  
-
 ---
 
 ## 🚀 What is Aegis AI?
